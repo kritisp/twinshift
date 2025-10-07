@@ -1,0 +1,1689 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workforce Digital Twin Dashboard</title>
+    <!-- Load Google Font: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <!-- Load Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+
+    <style>
+        :root {
+            /* Theme Variables - Light Mode Default */
+            --color-bg-primary: #f8f9fa;
+            --color-bg-secondary: #ffffff;
+            --color-text-primary: #1f2937;
+            --color-text-secondary: #4b5563;
+            --color-accent: #6366f1; /* Indigo 500 */
+            --color-accent-dark: #4f46e5;
+            --color-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --color-glass-border: rgba(255, 255, 255, 0.5);
+            --color-glass-fill: rgba(255, 255, 255, 0.3);
+            --color-error: #ef4444; /* Red 500 */
+            --color-success: #10b981; /* Green 500 */
+            --radius: 0.75rem;
+            --transition-time: 0.3s;
+        }
+
+        /* Dark Mode Overrides */
+        html.dark {
+            --color-bg-primary: #111827; /* Dark Blue Gray */
+            --color-bg-secondary: #1f2937;
+            --color-text-primary: #f9fafb;
+            --color-text-secondary: #d1d5db;
+            --color-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+            --color-glass-border: rgba(255, 255, 255, 0.15);
+            --color-glass-fill: rgba(255, 255, 255, 0.05);
+            --color-glass-fill-hover: rgba(255, 255, 255, 0.1);
+            --color-glass-card-bg: rgba(31, 41, 55, 0.6); /* Semi-transparent secondary */
+        }
+
+        /* Base Styles */
+        * {
+            box-sizing: border-box;
+            transition: background-color var(--transition-time), color var(--transition-time), box-shadow var(--transition-time), transform 0.15s ease-out;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-bg-primary);
+            color: var(--color-text-primary);
+            margin: 0;
+            padding-top: 5rem; /* Space for fixed header */
+            line-height: 1.6;
+        }
+
+        /* Utility Classes */
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        .text-accent { color: var(--color-accent); }
+        .bg-accent { background-color: var(--color-accent); }
+
+        /* Header / Topbar */
+        #header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
+            background-color: var(--color-bg-secondary);
+            border-bottom: 1px solid transparent;
+            box-shadow: none;
+        }
+
+        #header.scrolled {
+            box-shadow: var(--color-shadow);
+            border-bottom-color: rgba(0, 0, 0, 0.05);
+        }
+
+        html.dark #header.scrolled {
+            border-bottom-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+        }
+
+        .logo-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .search-container {
+            flex-grow: 1;
+            margin: 0 2rem;
+            max-width: 300px;
+        }
+
+        #global-search {
+            width: 100%;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--color-glass-border);
+            border-radius: var(--radius);
+            background-color: var(--color-glass-fill);
+            color: var(--color-text-primary);
+            font-size: 0.9rem;
+            backdrop-filter: blur(5px);
+        }
+
+        #global-search::placeholder {
+            color: var(--color-text-secondary);
+        }
+
+        /* Theme Toggle */
+        #theme-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+            color: var(--color-text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 1rem;
+        }
+
+        #theme-toggle:hover {
+            background-color: var(--color-glass-fill-hover, rgba(0, 0, 0, 0.05));
+        }
+
+        #theme-toggle svg {
+            width: 1.5rem;
+            height: 1.5rem;
+        }
+
+        /* Main Content Grid */
+        main {
+            padding: 2rem 0;
+            display: grid;
+            gap: 2rem;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(1, 1fr);
+            gap: 2rem;
+        }
+        @media (min-width: 768px) {
+            .grid-3 {
+                grid-template-columns: 2fr 1fr;
+            }
+        }
+        @media (min-width: 1024px) {
+            .grid-3 {
+                grid-template-columns: 3fr 1fr;
+            }
+        }
+
+        /* Card Styles (Glassmorphism) */
+        .card {
+            background-color: var(--color-glass-card-bg, var(--color-glass-fill));
+            border: 1px solid var(--color-glass-border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            box-shadow: var(--color-shadow);
+        }
+
+        .card h2 {
+            margin-top: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--color-text-primary);
+        }
+
+        /* KPI Strip */
+        #kpi-strip {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .kpi-card {
+            position: relative;
+            overflow: hidden;
+            padding: 1.5rem;
+            border-radius: var(--radius);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out, box-shadow 0.2s ease-out;
+            will-change: transform, box-shadow;
+            cursor: default;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+            border-color: var(--color-accent);
+        }
+
+        /* KPI Gradient Border Effect */
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 1px; /* thickness of the border */
+            border-radius: var(--radius);
+            background: linear-gradient(135deg, var(--color-accent), #8b5cf6, #ec4899);
+            -webkit-mask:
+                linear-gradient(#fff 0 0) content-box,
+                linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            z-index: -1;
+        }
+        
+        .kpi-card h3 {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--color-text-secondary);
+            margin: 0 0 0.5rem 0;
+        }
+
+        .kpi-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            color: var(--color-accent);
+        }
+        
+        .kpi-delta {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-left: 0.75rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 0.5rem;
+            display: none;
+            align-items: center;
+            gap: 0.25rem;
+            line-height: 1;
+        }
+
+        .delta-up { background-color: rgba(16, 185, 129, 0.2); color: var(--color-success); } /* Green */
+        .delta-down { background-color: rgba(239, 68, 68, 0.2); color: var(--color-error); } /* Red */
+        .delta-neutral { background-color: rgba(156, 163, 175, 0.2); color: var(--color-text-secondary); }
+
+        /* What-If Simulator */
+        #what-if-simulator .controls {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        @media (min-width: 600px) {
+            #what-if-simulator .controls {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: var(--color-text-secondary);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            -webkit-appearance: none;
+            background: var(--color-glass-border);
+            border-radius: 4px;
+            outline: none;
+            margin: 0.5rem 0;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--color-accent);
+            cursor: pointer;
+            box-shadow: 0 0 5px var(--color-accent);
+        }
+
+        select, button:not(#theme-toggle) {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius);
+            font-size: 1rem;
+            border: 1px solid var(--color-glass-border);
+            background-color: var(--color-glass-fill);
+            color: var(--color-text-primary);
+            cursor: pointer;
+        }
+
+        button:not(#theme-toggle) {
+            background-color: var(--color-accent);
+            color: white;
+            font-weight: 600;
+            border: none;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        button:not(#theme-toggle):hover {
+            background-color: var(--color-accent-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+        }
+        button:not(#theme-toggle):active {
+            transform: translateY(0);
+        }
+        
+        /* Charts */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            padding: 1rem;
+        }
+
+        /* Schedule Table */
+        #schedule-table-container {
+            overflow-x: auto;
+        }
+
+        #schedule-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.9rem;
+        }
+
+        #schedule-table thead th {
+            text-align: left;
+            padding: 1rem;
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            border-bottom: 1px solid var(--color-glass-border);
+            background-color: var(--color-glass-fill);
+            position: sticky;
+            top: 0;
+        }
+
+        #schedule-table tbody tr {
+            cursor: pointer;
+        }
+
+        #schedule-table tbody tr:hover {
+            background-color: var(--color-glass-fill-hover, rgba(0, 0, 0, 0.05));
+        }
+
+        #schedule-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--color-glass-border);
+        }
+
+        .fatigue-bar-container {
+            width: 100px;
+            height: 8px;
+            background-color: var(--color-glass-fill);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .fatigue-bar {
+            height: 100%;
+            background-color: var(--color-accent);
+            transition: width 0.5s ease-out;
+        }
+
+        /* Alerts Panel */
+        #alerts-panel {
+            padding: 0 0 1rem 0;
+        }
+        .alert-chip {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius);
+            margin-bottom: 0.75rem;
+            font-size: 0.9rem;
+            background-color: rgba(239, 68, 68, 0.1);
+            color: var(--color-error);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            transition: transform 0.2s;
+        }
+
+        .alert-chip.compliance {
+            background-color: rgba(251, 191, 36, 0.1); /* Amber */
+            color: #f59e0b;
+            border-color: rgba(251, 191, 36, 0.3);
+        }
+        
+        .alert-chip:hover .alert-actions {
+            opacity: 1;
+        }
+
+        .alert-actions {
+            opacity: 0;
+            transition: opacity 0.3s;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .alert-actions button {
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 50%;
+            line-height: 1;
+        }
+        
+        .alert-actions button:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Scroll Reveal Animation */
+        .scroll-reveal {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .scroll-reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Modal Styles */
+        #modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+            z-index: 2000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #worker-modal {
+            background-color: var(--color-bg-secondary);
+            color: var(--color-text-primary);
+            padding: 2rem;
+            border-radius: var(--radius);
+            max-width: 90vw;
+            width: 500px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            transform: scale(0.9);
+            opacity: 0;
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+        }
+
+        #modal-backdrop.active #worker-modal {
+            transform: scale(1);
+            opacity: 1;
+        }
+        
+        #modal-backdrop.active {
+            display: flex;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--color-glass-border);
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+        .modal-header button {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--color-text-secondary);
+        }
+
+        .modal-content-section h3 {
+            font-size: 1.1rem;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .modal-content-section ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .modal-content-section li {
+            padding: 0.25rem 0;
+            font-size: 0.95rem;
+            border-bottom: 1px dotted var(--color-glass-border);
+        }
+
+        /* Toast Notification */
+        #toast-container {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            z-index: 3000;
+        }
+
+        .toast {
+            background-color: var(--color-bg-secondary);
+            border: 1px solid var(--color-glass-border);
+            color: var(--color-text-primary);
+            padding: 1rem 1.5rem;
+            border-radius: var(--radius);
+            box-shadow: var(--color-shadow);
+            opacity: 0;
+            transform: translateX(100%);
+            transition: opacity 0.3s, transform 0.3s;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        
+        /* Help Section */
+        #help-section {
+            background-color: var(--color-glass-fill);
+            padding: 1.5rem;
+            border-radius: var(--radius);
+            border: 1px solid var(--color-glass-border);
+            margin-top: 2rem;
+            font-size: 0.9rem;
+            color: var(--color-text-secondary);
+        }
+        
+        #help-section h2 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            color: var(--color-text-primary);
+        }
+        #help-section ul {
+            list-style: disc;
+            padding-left: 1.5rem;
+        }
+
+        /* Accessibility: Focus States */
+        *:focus {
+            outline: 2px solid var(--color-accent-dark);
+            outline-offset: 3px;
+            border-radius: 4px;
+        }
+
+        /* SVG Icons */
+        .icon {
+            width: 1.25rem;
+            height: 1.25rem;
+            fill: currentColor;
+            flex-shrink: 0;
+        }
+        .icon-compliance-ok { color: var(--color-success); }
+        .icon-compliance-flag { color: #f59e0b; }
+
+        /* Animation Keyframes */
+        @keyframes kpi-stagger-in {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .kpi-card:nth-child(1) { animation: kpi-stagger-in 0.5s ease-out 0.1s forwards; }
+        .kpi-card:nth-child(2) { animation: kpi-stagger-in 0.5s ease-out 0.2s forwards; }
+        .kpi-card:nth-child(3) { animation: kpi-stagger-in 0.5s ease-out 0.3s forwards; }
+        .kpi-card:nth-child(4) { animation: kpi-stagger-in 0.5s ease-out 0.4s forwards; }
+
+        @media (max-width: 600px) {
+            .header-content {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            .logo-group, #theme-toggle {
+                margin-bottom: 0.5rem;
+            }
+            .search-container {
+                order: 3;
+                width: 100%;
+                margin: 0.5rem 0 0 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header / Topbar -->
+    <header id="header">
+        <div class="header-content container">
+            <div class="logo-group">
+                <!-- Inline SVG Logo -->
+                <svg class="icon text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+                </svg>
+                Workforce Digital Twin
+            </div>
+            <div class="search-container">
+                <input type="search" id="global-search" placeholder="Search workers, skills, or alerts...">
+            </div>
+            <button id="theme-toggle" aria-label="Toggle light and dark mode">
+                <!-- Moon icon for dark mode -->
+                <svg id="moon-icon" style="display: none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                <!-- Sun icon for light mode -->
+                <svg id="sun-icon" style="display: none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container">
+
+        <!-- KPI Strip -->
+        <section id="kpi-strip" class="scroll-reveal" data-section-id="kpis">
+            <!-- Utilization % -->
+            <div class="kpi-card" data-kpi="utilization">
+                <h3>Utilization %</h3>
+                <div class="kpi-value"><span id="kpi-utilization-value">0.00</span>%
+                    <div class="kpi-delta" id="kpi-utilization-delta"></div>
+                </div>
+            </div>
+
+            <!-- Overtime Hours -->
+            <div class="kpi-card" data-kpi="overtime">
+                <h3>Overtime Hours (Weekly)</h3>
+                <div class="kpi-value"><span id="kpi-overtime-value">0</span>hrs
+                    <div class="kpi-delta" id="kpi-overtime-delta"></div>
+                </div>
+            </div>
+
+            <!-- Fatigue Risk Index -->
+            <div class="kpi-card" data-kpi="fatigue">
+                <h3>Fatigue Risk Index</h3>
+                <div class="kpi-value"><span id="kpi-fatigue-value">0</span>
+                    <div class="kpi-delta" id="kpi-fatigue-delta"></div>
+                </div>
+            </div>
+
+            <!-- Compliance Violations -->
+            <div class="kpi-card" data-kpi="compliance">
+                <h3>Compliance Violations</h3>
+                <div class="kpi-value"><span id="kpi-compliance-value">0</span>
+                    <div class="kpi-delta" id="kpi-compliance-delta"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- What-If Simulator and Radar Chart -->
+        <div class="grid-3">
+            <section id="what-if-simulator" class="card scroll-reveal" data-section-id="simulator">
+                <h2>What-If Scenario Simulator</h2>
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="demand-change">Demand Change: <span id="demand-change-val">+0%</span></label>
+                        <input type="range" id="demand-change" min="-30" max="50" value="0" step="1">
+                    </div>
+                    <div class="control-group">
+                        <label for="absences">Absences (Count): <span id="absences-val">0</span></label>
+                        <input type="range" id="absences" min="0" max="20" value="0" step="1">
+                    </div>
+                    <div class="control-group">
+                        <label for="shift-option">Add Temporary Shift</label>
+                        <select id="shift-option">
+                            <option value="none">None</option>
+                            <option value="partial">Partial (+5 Workers)</option>
+                            <option value="full">Full (+10 Workers)</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button id="run-scenario-btn" aria-live="polite">Run Scenario</button>
+                    <button id="export-scenario-btn" style="width: auto; background-color: var(--color-text-secondary); color: white;">Export</button>
+                </div>
+            </section>
+
+            <section id="trade-off-chart-section" class="card scroll-reveal" data-section-id="radar-chart">
+                <h2>Scenario Trade-Offs</h2>
+                <div class="chart-container">
+                    <canvas id="tradeOffRadarChart" aria-label="Scenario Trade-Off Radar Chart"></canvas>
+                </div>
+            </section>
+        </div>
+
+        <!-- Skills & Coverage Chart -->
+        <section id="skills-coverage" class="card scroll-reveal" data-section-id="skills-chart">
+            <h2>Skills & Coverage Gap</h2>
+            <div class="chart-container" style="height: 350px;">
+                <canvas id="skillsCoverageChart" aria-label="Skills and Coverage Chart"></canvas>
+            </div>
+        </section>
+
+        <!-- Shift Planner / Schedule Table and Alerts Panel -->
+        <div class="grid-3">
+            <section id="shift-planner" class="card scroll-reveal" data-section-id="schedule">
+                <h2>Shift Planner: Today</h2>
+                <div id="schedule-table-container">
+                    <table id="schedule-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Worker</th>
+                                <th scope="col">Primary Skill</th>
+                                <th scope="col">Shift</th>
+                                <th scope="col">Hrs/Wk</th>
+                                <th scope="col">Fatigue</th>
+                                <th scope="col">Compliance</th>
+                            </tr>
+                        </thead>
+                        <tbody id="schedule-body">
+                            <!-- Table rows will be inserted here by JS -->
+                            <tr><td colspan="6" style="text-align: center; padding: 2rem;">Loading workforce data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="alerts-panel" class="card scroll-reveal" data-section-id="alerts">
+                <h2>Alerts & Compliance</h2>
+                <div id="alert-list">
+                    <!-- Alerts chips will be inserted here by JS -->
+                </div>
+            </section>
+        </div>
+        
+        <!-- Help Section -->
+        <section id="help-section" class="scroll-reveal" data-section-id="help">
+            <h2>About the Workforce Digital Twin</h2>
+            <p>This dashboard simulates workforce performance against current and projected demand. The core function is the **What-If Simulator**, which allows you to model changes in **Demand**, **Absences**, and **Temporary Shifts** to see the resulting impact on key metrics.</p>
+            <ul>
+                <li><strong>Utilization %:</strong> Available capacity used / Total capacity. (Goal: 85-95%)</li>
+                <li><strong>Overtime Hours:</strong> Total hours worked beyond standard per week. (Goal: Minimize)</li>
+                <li><strong>Fatigue Risk Index:</strong> A calculated score based on recent work/rest cycles. Higher is worse. (Goal: < 50)</li>
+                <li><strong>Compliance Violations:</strong> Count of workers violating internal rules (e.g., max hours, min rest). (Goal: 0)</li>
+            </ul>
+        </section>
+
+    </main>
+    
+    <!-- Worker Profile Modal -->
+    <div id="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-worker-name">
+        <div id="worker-modal">
+            <div class="modal-header">
+                <h2 id="modal-worker-name">Worker Profile</h2>
+                <button id="close-modal-btn" aria-label="Close modal">
+                    &times;
+                </button>
+            </div>
+            <div id="modal-content">
+                <div class="modal-content-section">
+                    <h3>Personal Metrics</h3>
+                    <ul id="modal-metrics"></ul>
+                </div>
+                <div class="modal-content-section">
+                    <h3>Skills & Certifications</h3>
+                    <ul id="modal-skills"></ul>
+                </div>
+                <div class="modal-content-section" style="margin-top: 2rem;">
+                    <button style="width: 100%;" onclick="showToast('Suggested reassignment functionality triggered.', 'success')">Suggest Reassignment</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container"></div>
+
+    <!-- Mock Data JSON -->
+    <script type="application/json" id="mock-data">
+        {
+            "workers": [
+                {"id": "W001", "name": "Anya Sharma", "primarySkill": "Welding", "certifications": ["Arc-A", "MIG-B"], "recentHours": 45, "lastRestHrs": 12, "fatigueScore": 30, "complianceFlags": []},
+                {"id": "W002", "name": "Ben Carter", "primarySkill": "QA", "certifications": ["ISO9001", "Six Sigma"], "recentHours": 52, "lastRestHrs": 8, "fatigueScore": 65, "complianceFlags": ["Rest period risk"]},
+                {"id": "W003", "name": "Carlos Gomez", "primarySkill": "CNC", "certifications": ["Lathe", "Mill"], "recentHours": 40, "lastRestHrs": 15, "fatigueScore": 20, "complianceFlags": []},
+                {"id": "W004", "name": "Diane Lee", "primarySkill": "Assembly", "certifications": ["Electronics", "Robotics"], "recentHours": 48, "lastRestHrs": 10, "fatigueScore": 50, "complianceFlags": []},
+                {"id": "W005", "name": "Ethan Hunt", "primarySkill": "Maintenance", "certifications": ["HVAC", "Plumbing"], "recentHours": 55, "lastRestHrs": 7, "fatigueScore": 80, "complianceFlags": ["Max hours risk", "Rest period violation"]},
+                {"id": "W006", "name": "Fiona Chen", "primarySkill": "Welding", "certifications": ["Arc-A"], "recentHours": 38, "lastRestHrs": 14, "fatigueScore": 15, "complianceFlags": []},
+                {"id": "W007", "name": "Greg Miller", "primarySkill": "QA", "certifications": ["ISO9001"], "recentHours": 42, "lastRestHrs": 11, "fatigueScore": 35, "complianceFlags": []},
+                {"id": "W008", "name": "Hannah Roy", "primarySkill": "CNC", "certifications": ["Mill"], "recentHours": 44, "lastRestHrs": 9, "fatigueScore": 60, "complianceFlags": ["Rest period risk"]},
+                {"id": "W009", "name": "Isaac Bell", "primarySkill": "Assembly", "certifications": ["Robotics"], "recentHours": 50, "lastRestHrs": 10, "fatigueScore": 55, "complianceFlags": []},
+                {"id": "W010", "name": "Jasmine Kaur", "primarySkill": "Maintenance", "certifications": ["HVAC"], "recentHours": 41, "lastRestHrs": 13, "fatigueScore": 25, "complianceFlags": []},
+                {"id": "W011", "name": "Kyle Wu", "primarySkill": "Welding", "certifications": ["MIG-B"], "recentHours": 43, "lastRestHrs": 12, "fatigueScore": 30, "complianceFlags": []},
+                {"id": "W012", "name": "Laura Sun", "primarySkill": "QA", "certifications": ["Six Sigma"], "recentHours": 51, "lastRestHrs": 8, "fatigueScore": 70, "complianceFlags": ["Max hours risk", "Rest period risk"]},
+                {"id": "W013", "name": "Mark Jones", "primarySkill": "CNC", "certifications": ["Lathe"], "recentHours": 39, "lastRestHrs": 14, "fatigueScore": 20, "complianceFlags": []},
+                {"id": "W014", "name": "Nora Paul", "primarySkill": "Assembly", "certifications": ["Electronics"], "recentHours": 47, "lastRestHrs": 11, "fatigueScore": 45, "complianceFlags": []},
+                {"id": "W015", "name": "Oscar Cruz", "primarySkill": "Maintenance", "certifications": ["Plumbing"], "recentHours": 53, "lastRestHrs": 9, "fatigueScore": 75, "complianceFlags": ["Max hours risk"]},
+                {"id": "W016", "name": "Penny Zang", "primarySkill": "Welding", "certifications": ["Arc-A", "MIG-B"], "recentHours": 46, "lastRestHrs": 11, "fatigueScore": 40, "complianceFlags": []},
+                {"id": "W017", "name": "Quinn Dee", "primarySkill": "QA", "certifications": ["ISO9001"], "recentHours": 49, "lastRestHrs": 10, "fatigueScore": 50, "complianceFlags": []},
+                {"id": "W018", "name": "Ryan Fox", "primarySkill": "CNC", "certifications": ["Lathe", "Mill"], "recentHours": 42, "lastRestHrs": 13, "fatigueScore": 25, "complianceFlags": []},
+                {"id": "W019", "name": "Sarah King", "primarySkill": "Assembly", "certifications": ["Robotics"], "recentHours": 54, "lastRestHrs": 7, "fatigueScore": 85, "complianceFlags": ["Max hours risk", "Rest period violation"]},
+                {"id": "W020", "name": "Tom Yip", "primarySkill": "Maintenance", "certifications": ["HVAC", "Plumbing"], "recentHours": 40, "lastRestHrs": 15, "fatigueScore": 15, "complianceFlags": []}
+            ],
+            "demand": {
+                "Welding": 80, "QA": 60, "CNC": 50, "Assembly": 75, "Maintenance": 40
+            },
+            "rules": {
+                "maxHoursPerWeek": 54,
+                "minRestHours": 10,
+                "maxFatigueRisk": 70
+            },
+            "capacity": {
+                "totalAvailableHours": 800,
+                "skillRequirements": {
+                    "Welding": 200, "QA": 150, "CNC": 100, "Assembly": 180, "Maintenance": 90
+                }
+            }
+        }
+    </script>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- Global Variables and Firebase/Auth Setup (Mandatory Canvas Environment Variables) ---
+        // NOTE: Since this is a self-contained, no-server HTML file, we will use vanilla JS and localStorage
+        // as requested for theme persistence. The following variables are included to satisfy canvas
+        // environment requirements but are not used for full Firestore functionality here.
+        
+        // FIX: Renamed local constants to avoid ReferenceError when checking against the 
+        // potentially injected global variables in the Temporal Dead Zone.
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? __firebase_config : '{"apiKey": "mock_key"}';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : undefined;
+        
+        // In a real application, we would use Firebase, but for this constraint (single-file, no-server), 
+        // we proceed with local data processing and localStorage for persistence.
+
+        const rawData = JSON.parse(document.getElementById('mock-data').textContent);
+        let currentWorkers = [...rawData.workers];
+        let baselineKPIs = {};
+        let scenarioKPIs = {};
+        let tradeOffRadarChart;
+        let skillsCoverageChart;
+
+        const RULE_MAX_HOURS_WK = rawData.rules.maxHoursPerWeek;
+        const RULE_MIN_REST_HRS = rawData.rules.minRestHours;
+
+        // Simple utility function for clamping numbers
+        const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
+
+        // --- THEME & PERSISTENCE LOGIC ---
+        
+        /**
+         * Sets the current theme (light or dark) and saves it to localStorage.
+         * @param {string} theme - 'light' or 'dark'.
+         */
+        function applyTheme(theme) {
+            const html = document.documentElement;
+            html.classList.remove('light', 'dark');
+            html.classList.add(theme);
+            localStorage.setItem('theme', theme);
+            
+            // Update toggle icons
+            document.getElementById('sun-icon').style.display = theme === 'dark' ? 'block' : 'none';
+            document.getElementById('moon-icon').style.display = theme === 'light' ? 'block' : 'none';
+            
+            // Re-render charts to update colors if they exist
+            if (tradeOffRadarChart) updateChartColors(tradeOffRadarChart);
+            if (skillsCoverageChart) updateChartColors(skillsCoverageChart);
+        }
+
+        /**
+         * Toggles the theme between light and dark.
+         */
+        function toggleTheme() {
+            const currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+            applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+        }
+
+        /**
+         * Initializes the theme from localStorage or system preference.
+         */
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            
+            if (savedTheme) {
+                applyTheme(savedTheme);
+            } else if (systemPrefersDark) {
+                applyTheme('dark');
+            } else {
+                applyTheme('light');
+            }
+
+            document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+        }
+
+        // --- SCROLL INTERACTION LOGIC ---
+
+        /**
+         * Initializes the header scroll shadow.
+         */
+        function initScrollShadow() {
+            const header = document.getElementById('header');
+            const toggleHeaderShadow = () => {
+                header.classList.toggle('scrolled', window.scrollY > 0);
+            };
+            window.addEventListener('scroll', toggleHeaderShadow);
+            toggleHeaderShadow(); // Initial check
+        }
+        
+        /**
+         * Initializes the IntersectionObserver for scroll reveal animations.
+         */
+        function initScrollReveal() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, {
+                rootMargin: '0px',
+                threshold: 0.1 // Reveal when 10% is visible
+            });
+
+            document.querySelectorAll('.scroll-reveal').forEach(el => {
+                observer.observe(el);
+            });
+        }
+
+        // --- DATA COMPUTATION LOGIC ---
+
+        /**
+         * Computes the core KPIs based on a list of workers and current demand.
+         * @param {Array<Object>} workers - The list of workers in the scenario.
+         * @returns {Object} Calculated KPIs.
+         */
+        function computeKPIs(workers) {
+            const totalWorkers = rawData.workers.length;
+            const scenarioWorkers = workers.length;
+            const totalRequiredHours = Object.values(rawData.capacity.skillRequirements).reduce((a, b) => a + b, 0);
+            
+            let totalActualHours = workers.reduce((sum, w) => sum + w.recentHours, 0);
+            let totalOvertimeHours = workers.reduce((sum, w) => sum + Math.max(0, w.recentHours - 40), 0);
+            let totalFatigueScore = workers.reduce((sum, w) => sum + w.fatigueScore, 0);
+            let complianceViolations = workers.filter(w => w.complianceFlags.length > 0).length;
+
+            let utilization = clamp((totalRequiredHours / rawData.capacity.totalAvailableHours) * 100, 0, 100);
+            
+            // Recalculate utilization based on current worker capacity vs fixed demand
+            const currentCapacity = scenarioWorkers * 40; // Assuming 40 base hours per worker
+            utilization = clamp((totalRequiredHours / currentCapacity) * 100, 0, 100);
+
+            return {
+                utilization: parseFloat(utilization.toFixed(2)),
+                overtime: Math.round(totalOvertimeHours),
+                fatigue: Math.round(totalFatigueScore / scenarioWorkers),
+                compliance: complianceViolations
+            };
+        }
+
+        /**
+         * Runs the What-If scenario simulation, updating worker data and KPIs.
+         */
+        function runScenario() {
+            const demandChange = parseInt(document.getElementById('demand-change').value);
+            const absences = parseInt(document.getElementById('absences').value);
+            const shiftOption = document.getElementById('shift-option').value;
+            
+            // 1. Start with the baseline workforce
+            let simulatedWorkers = JSON.parse(JSON.stringify(rawData.workers));
+
+            // 2. Apply Absences (remove N workers with the lowest fatigue to simulate sick leave of non-exhausted staff)
+            if (absences > 0) {
+                simulatedWorkers.sort((a, b) => a.fatigueScore - b.fatigueScore);
+                const removedWorkers = simulatedWorkers.splice(0, absences);
+                showToast(`Simulating ${removedWorkers.length} absences.`, 'info');
+            }
+
+            // 3. Apply Demand Change (affects required hours and capacity usage)
+            const demandFactor = 1 + (demandChange / 100);
+
+            // 4. Apply Shift Option (adds temporary capacity)
+            let capacityBonus = 0;
+            let capacityWorkers = 0;
+            if (shiftOption === 'partial') {
+                capacityWorkers = 5;
+                capacityBonus = 5 * 40; // 5 workers * 40 hours
+            } else if (shiftOption === 'full') {
+                capacityWorkers = 10;
+                capacityBonus = 10 * 40; // 10 workers * 40 hours
+            }
+            
+            // For the demo, let's simulate the impact on the remaining workers:
+            // High demand/low capacity increases everyone's hours/fatigue.
+            const capacityRatio = (rawData.capacity.totalAvailableHours + capacityBonus) / (simulatedWorkers.length * 40);
+            const loadFactor = clamp((demandFactor / capacityRatio) * 1.5, 0.5, 2.0); // Factor of how stressed the system is
+
+            // 5. Re-calculate worker metrics for the scenario
+            simulatedWorkers.forEach(worker => {
+                // Adjust hours (assuming remaining workers pick up the slack)
+                const newHours = clamp(worker.recentHours * loadFactor, 30, RULE_MAX_HOURS_WK + 10); // +10 to allow for violations
+
+                // Simple FatigueScore formula (Fatigue = clamp(current + (overtime*2) + demandFactor*3 - restBenefit, 0, 100))
+                const restBenefit = worker.lastRestHrs >= RULE_MIN_REST_HRS ? 10 : 0;
+                const overtimePenalty = Math.max(0, newHours - 40) * 2;
+                
+                let newFatigue = worker.fatigueScore + overtimePenalty + demandFactor * 3 - restBenefit;
+                worker.fatigueScore = clamp(newFatigue, 0, 100);
+                worker.recentHours = Math.round(newHours);
+                
+                // Re-evaluate compliance
+                worker.complianceFlags = [];
+                if (worker.recentHours > RULE_MAX_HOURS_WK) {
+                    worker.complianceFlags.push("Max hours risk");
+                }
+                if (worker.lastRestHrs < RULE_MIN_REST_HRS) {
+                    worker.complianceFlags.push("Rest period risk");
+                }
+            });
+
+            // 6. Add temporary workers to the list for KPI calculation
+            for (let i = 0; i < capacityWorkers; i++) {
+                simulatedWorkers.push({
+                    id: `Temp${i+1}`, name: `Temp Worker ${i+1}`, primarySkill: "General", certifications: [], 
+                    recentHours: 40, lastRestHrs: 12, fatigueScore: 10, complianceFlags: []
+                });
+            }
+            
+            // 7. Store the scenario workers for the table update
+            currentWorkers = simulatedWorkers;
+
+            // 8. Compute Scenario KPIs
+            scenarioKPIs = computeKPIs(simulatedWorkers);
+
+            // 9. Update UI
+            updateKPIs(scenarioKPIs);
+            updateDeltaBadges();
+            updateTradeOffRadarChart(baselineKPIs, scenarioKPIs, demandFactor, loadFactor);
+            updateScheduleTable(currentWorkers);
+
+            // 10. Save and notify
+            saveScenarioInputs({demandChange, absences, shiftOption});
+            showToast('Scenario applied successfully!', 'success');
+        }
+
+        // --- UI & CHART RENDERING LOGIC ---
+
+        /**
+         * Animates a single KPI counter from 0 to its target value.
+         * @param {HTMLElement} element - The target span element.
+         * @param {number} start - The starting value (usually 0).
+         * @param {number} end - The final value.
+         * @param {number} duration - Animation duration in ms.
+         */
+        function animateCounter(element, start, end, duration = 600) {
+            let startTime = null;
+            const step = (timestamp) => {
+                if (!startTime) startTime = timestamp;
+                const progress = Math.min((timestamp - startTime) / duration, 1);
+                
+                let currentValue = start + (end - start) * progress;
+
+                // Determine formatting based on the KPI
+                const kpiId = element.id.split('-')[1];
+                let formattedValue;
+                if (kpiId === 'utilization') {
+                    formattedValue = currentValue.toFixed(2);
+                } else {
+                    formattedValue = Math.round(currentValue);
+                }
+                
+                element.textContent = formattedValue;
+                
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        /**
+         * Updates all KPI values on the dashboard.
+         * @param {Object} kpis - The new KPI values.
+         */
+        function updateKPIs(kpis) {
+            animateCounter(document.getElementById('kpi-utilization-value'), 0, kpis.utilization);
+            animateCounter(document.getElementById('kpi-overtime-value'), 0, kpis.overtime);
+            animateCounter(document.getElementById('kpi-fatigue-value'), 0, kpis.fatigue);
+            animateCounter(document.getElementById('kpi-compliance-value'), 0, kpis.compliance);
+        }
+
+        /**
+         * Updates the delta badges (▲/▼) next to the KPI values.
+         */
+        function updateDeltaBadges() {
+            const kpiKeys = ['utilization', 'overtime', 'fatigue', 'compliance'];
+            
+            kpiKeys.forEach(key => {
+                const baseline = baselineKPIs[key] || 0;
+                const scenario = scenarioKPIs[key] || 0;
+                const deltaElement = document.getElementById(`kpi-${key}-delta`);
+                const delta = scenario - baseline;
+                
+                let direction = delta === 0 ? 'neutral' : (delta > 0 ? 'up' : 'down');
+                
+                // Override direction for 'good' KPIs (Lower Overtime/Fatigue/Compliance is good)
+                if (['overtime', 'fatigue', 'compliance'].includes(key)) {
+                    if (delta < 0) direction = 'up';   // Lower is good (green/up arrow for positive change)
+                    if (delta > 0) direction = 'down'; // Higher is bad (red/down arrow for negative change)
+                }
+                
+                if (deltaElement) {
+                    deltaElement.style.display = 'flex';
+                    deltaElement.className = `kpi-delta delta-${direction}`;
+                    const absDelta = Math.abs(delta);
+                    let displayValue;
+                    if (key === 'utilization') {
+                         displayValue = `${absDelta.toFixed(2)}%`;
+                    } else {
+                        displayValue = Math.round(absDelta);
+                    }
+                    
+                    const arrow = direction === 'up' ? '▲' : (direction === 'down' ? '▼' : '—');
+                    deltaElement.innerHTML = `${arrow} ${displayValue}`;
+                }
+            });
+        }
+
+        /**
+         * Converts RGB/Hex colors to RGBA with specific opacity.
+         * @param {string} color - The color string (e.g., 'rgb(255, 0, 0)' or '#ff0000').
+         * @param {number} opacity - The opacity value (0 to 1).
+         * @returns {string} The RGBA string.
+         */
+        function colorToRgba(color, opacity) {
+            const tempDiv = document.createElement('div');
+            tempDiv.style.color = color;
+            document.body.appendChild(tempDiv);
+            const rgb = window.getComputedStyle(tempDiv).color;
+            document.body.removeChild(tempDiv);
+            
+            const match = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+            if (match) {
+                return `rgba(${match[1]}, ${match[2]}, ${match[3]}, ${opacity})`;
+            }
+            return color; // fallback
+        }
+
+        /**
+         * Updates chart colors dynamically for theme switching.
+         * @param {Object} chart - The Chart.js instance.
+         */
+        function updateChartColors(chart) {
+            const accent = getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim();
+            const textPrimary = getComputedStyle(document.documentElement).getPropertyValue('--color-text-primary').trim();
+            const textSecondary = getComputedStyle(document.documentElement).getPropertyValue('--color-text-secondary').trim();
+
+            if (chart.options.scales?.r) { // Radar Chart
+                chart.options.scales.r.pointLabels.color = textPrimary;
+                chart.options.scales.r.grid.color = colorToRgba(textSecondary, 0.2);
+                chart.options.scales.r.angleLines.color = colorToRgba(textSecondary, 0.2);
+                chart.options.scales.r.ticks.color = textSecondary;
+                
+                chart.data.datasets[0].borderColor = colorToRgba(accent, 0.7);
+                chart.data.datasets[0].backgroundColor = colorToRgba(accent, 0.2);
+                chart.data.datasets[1].borderColor = colorToRgba(textSecondary, 0.7);
+                chart.data.datasets[1].backgroundColor = colorToRgba(textSecondary, 0.2);
+            }
+            
+            if (chart.options.scales?.x) { // Bar Chart
+                chart.options.scales.x.ticks.color = textSecondary;
+                chart.options.scales.y.ticks.color = textSecondary;
+                chart.options.scales.x.grid.color = colorToRgba(textSecondary, 0.2);
+                chart.options.scales.y.grid.color = colorToRgba(textSecondary, 0.2);
+
+                const dataLabels = chart.options.plugins.datalabels;
+                if (dataLabels) {
+                    dataLabels.color = document.documentElement.classList.contains('dark') ? textPrimary : textSecondary;
+                }
+            }
+            
+            chart.update();
+        }
+
+        /**
+         * Initializes the Trade-Off Radar Chart.
+         * @param {Object} baseline - The baseline KPI data.
+         * @param {Object} scenario - The scenario KPI data.
+         * @param {number} demandFactor - The demand factor (for Output metric).
+         * @param {number} loadFactor - The load factor (for Fairness/Cost metric).
+         */
+        function initTradeOffRadarChart(baseline, scenario, demandFactor, loadFactor) {
+            const ctx = document.getElementById('tradeOffRadarChart').getContext('2d');
+            const accent = getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim();
+            const textSecondary = getComputedStyle(document.documentElement).getPropertyValue('--color-text-secondary').trim();
+            const textPrimary = getComputedStyle(document.documentElement).getPropertyValue('--color-text-primary').trim();
+
+            // Mock Data for Trade-Offs (Normalized 0-100)
+            const calculateTradeOffs = (kpis, df, lf) => {
+                const cost = clamp(kpis.overtime * 2 + (lf - 1) * 30, 10, 100);
+                const output = clamp(kpis.utilization + (df - 1) * 20, 10, 100);
+                const fatigue = clamp(kpis.fatigue * 1.2, 10, 100);
+                const fairness = clamp(100 - (kpis.overtime * 1.5), 10, 100); // Inverse of overtime pressure
+                const compliance = clamp(100 - kpis.compliance * 10, 10, 100); // Inverse of violations
+                return [cost, output, fatigue, fairness, compliance];
+            };
+
+            const baselineData = calculateTradeOffs(baseline, 1, 1);
+            const scenarioData = calculateTradeOffs(scenario, demandFactor, loadFactor);
+
+            if (tradeOffRadarChart) tradeOffRadarChart.destroy();
+
+            tradeOffRadarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Cost (Higher is worse)', 'Output (Utilization)', 'Fatigue (Higher is worse)', 'Fairness (Workload Distribution)', 'Compliance (Lower Violations)'],
+                    datasets: [{
+                        label: 'Baseline',
+                        data: baselineData,
+                        fill: true,
+                        backgroundColor: colorToRgba(accent, 0.2),
+                        borderColor: colorToRgba(accent, 0.7),
+                        pointBackgroundColor: accent,
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: accent
+                    }, {
+                        label: 'Scenario',
+                        data: scenarioData,
+                        fill: true,
+                        backgroundColor: colorToRgba(textSecondary, 0.2),
+                        borderColor: colorToRgba(textSecondary, 0.7),
+                        pointBackgroundColor: textSecondary,
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: textSecondary
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: colorToRgba(textSecondary, 0.2) },
+                            grid: { color: colorToRgba(textSecondary, 0.2) },
+                            suggestedMin: 0,
+                            suggestedMax: 100,
+                            ticks: {
+                                display: false,
+                                backdropColor: 'transparent',
+                                color: textSecondary
+                            },
+                            pointLabels: {
+                                color: textPrimary,
+                                font: { size: 12 }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: textPrimary } }
+                    }
+                }
+            });
+        }
+
+        /**
+         * Initializes the Skills & Coverage Chart (Stacked Horizontal Bar).
+         */
+        function initSkillsCoverageChart() {
+            const ctx = document.getElementById('skillsCoverageChart').getContext('2d');
+            const skills = ['Welding', 'QA', 'CNC', 'Assembly', 'Maintenance'];
+            const available = [10, 8, 6, 7, 5]; // Mock worker count by skill
+            const needed = [12, 10, 7, 9, 6]; // Mock workers needed by skill
+            const availableHours = skills.map((s, i) => available[i] * 40);
+            const requiredHours = skills.map((s, i) => needed[i] * 40);
+            const gapHours = requiredHours.map((req, i) => Math.max(0, req - availableHours[i]));
+            const coveredHours = requiredHours.map((req, i) => Math.min(req, availableHours[i]));
+            
+            const accent = getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim();
+            const error = getComputedStyle(document.documentElement).getPropertyValue('--color-error').trim();
+            const success = getComputedStyle(document.documentElement).getPropertyValue('--color-success').trim();
+            const textSecondary = getComputedStyle(document.documentElement).getPropertyValue('--color-text-secondary').trim();
+
+            if (skillsCoverageChart) skillsCoverageChart.destroy();
+
+            skillsCoverageChart = new Chart(ctx, {
+                type: 'bar',
+                plugins: [ChartDataLabels],
+                data: {
+                    labels: skills,
+                    datasets: [
+                        {
+                            label: 'Hours Gap (Shortfall)',
+                            data: gapHours,
+                            backgroundColor: colorToRgba(error, 0.8),
+                            stack: 'stack1'
+                        },
+                        {
+                            label: 'Hours Covered',
+                            data: coveredHours,
+                            backgroundColor: colorToRgba(success, 0.8),
+                            stack: 'stack1'
+                        }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 1500, easing: 'easeOutQuart' },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            title: { display: true, text: 'Hours Capacity' },
+                            ticks: { color: textSecondary },
+                            grid: { color: colorToRgba(textSecondary, 0.2) }
+                        },
+                        y: {
+                            stacked: true,
+                            ticks: { color: textSecondary },
+                            grid: { color: colorToRgba(textSecondary, 0.2) }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: textSecondary } },
+                        datalabels: {
+                            color: document.documentElement.classList.contains('dark') ? 'white' : 'black',
+                            formatter: (value, context) => {
+                                const datasetIndex = context.datasetIndex;
+                                const dataIndex = context.dataIndex;
+                                if (datasetIndex === 1) {
+                                    return `${Math.round(value)}hrs Covered`;
+                                } else if (value > 0) {
+                                    return `${Math.round(value)}hrs Gap`;
+                                }
+                                return '';
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    const index = context.dataIndex;
+                                    const available = availableHours[index];
+                                    const needed = requiredHours[index];
+                                    const gap = gapHours[index];
+                                    return [
+                                        `Skill: ${skills[index]}`,
+                                        `Available Hours: ${available}`,
+                                        `Needed Hours: ${needed}`,
+                                        `Gap: ${gap}`
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        /**
+         * Populates the Shift Planner/Schedule Table.
+         * @param {Array<Object>} workers - The list of workers to display.
+         */
+        function updateScheduleTable(workers) {
+            const tbody = document.getElementById('schedule-body');
+            tbody.innerHTML = '';
+
+            workers.forEach(worker => {
+                const row = tbody.insertRow();
+                row.setAttribute('tabindex', '0'); // Make row focusable
+                row.setAttribute('data-worker-id', worker.id);
+                row.addEventListener('click', () => openWorkerModal(worker));
+                row.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openWorkerModal(worker);
+                    }
+                });
+
+                const complianceIcon = worker.complianceFlags.length > 0 ?
+                    `<svg class="icon icon-compliance-flag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>` :
+                    `<svg class="icon icon-compliance-ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+
+                const shift = worker.id.startsWith('W0') ? 'Day' : (worker.id.startsWith('Temp') ? 'Temp' : 'Night');
+
+                row.innerHTML = `
+                    <td>${worker.name}</td>
+                    <td>${worker.primarySkill}</td>
+                    <td>${shift}</td>
+                    <td>${worker.recentHours}</td>
+                    <td>
+                        <div class="fatigue-bar-container">
+                            <div class="fatigue-bar" style="width: ${worker.fatigueScore}%; background-color: ${worker.fatigueScore > 70 ? 'var(--color-error)' : (worker.fatigueScore > 50 ? '#f59e0b' : 'var(--color-success)')}"></div>
+                        </div>
+                    </td>
+                    <td>${complianceIcon}</td>
+                `;
+            });
+        }
+
+        /**
+         * Populates and displays the Worker Profile Modal.
+         * @param {Object} worker - The worker data object.
+         */
+        function openWorkerModal(worker) {
+            document.getElementById('modal-worker-name').textContent = worker.name;
+            
+            const metricsUl = document.getElementById('modal-metrics');
+            metricsUl.innerHTML = `
+                <li><strong>ID:</strong> ${worker.id}</li>
+                <li><strong>Primary Skill:</strong> ${worker.primarySkill}</li>
+                <li><strong>Recent Weekly Hours:</strong> ${worker.recentHours}</li>
+                <li><strong>Last Rest (Hours):</strong> ${worker.lastRestHrs}</li>
+                <li><strong>Fatigue Score:</strong> <span style="font-weight: bold; color: ${worker.fatigueScore > 70 ? 'var(--color-error)' : (worker.fatigueScore > 50 ? '#f59e0b' : 'var(--color-success)')}">${worker.fatigueScore}</span></li>
+                <li><strong>Compliance Status:</strong> ${worker.complianceFlags.length > 0 ? worker.complianceFlags.join(', ') : 'OK'}</li>
+            `;
+
+            const skillsUl = document.getElementById('modal-skills');
+            skillsUl.innerHTML = `
+                <li><strong>Certifications:</strong> ${worker.certifications.length > 0 ? worker.certifications.join(', ') : 'None'}</li>
+            `;
+
+            const modalBackdrop = document.getElementById('modal-backdrop');
+            modalBackdrop.classList.add('active');
+            modalBackdrop.focus(); // Set focus to backdrop for Esc key handling
+        }
+
+        /**
+         * Closes the Worker Profile Modal.
+         */
+        function closeModal() {
+            document.getElementById('modal-backdrop').classList.remove('active');
+            // Re-focus the previously focused element or the document body
+            document.body.focus();
+        }
+
+        /**
+         * Populates the Alerts Panel.
+         * @param {Array<Object>} workers - The list of workers with compliance flags.
+         */
+        function updateAlertsPanel(workers) {
+            const alertList = document.getElementById('alert-list');
+            alertList.innerHTML = '';
+            
+            let allAlerts = [];
+            workers.filter(w => w.complianceFlags.length > 0 || w.fatigueScore > 70).forEach(worker => {
+                if (worker.fatigueScore > 70) {
+                    allAlerts.push({
+                        type: 'risk', 
+                        message: `${worker.name} (${worker.primarySkill}) has critical fatigue risk (${worker.fatigueScore})`
+                    });
+                }
+                worker.complianceFlags.forEach(flag => {
+                    allAlerts.push({
+                        type: 'compliance', 
+                        message: `${worker.name} (${worker.primarySkill}): ${flag}`
+                    });
+                });
+            });
+
+            // Add some mock operational alerts
+            allAlerts.push({ type: 'risk', message: 'QA skill gap in Night shift (4 total hours shortfall).' });
+            allAlerts.push({ type: 'compliance', message: 'Facility 2: Forklift certification renewal overdue.' });
+            
+            if (allAlerts.length === 0) {
+                alertList.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: var(--color-text-secondary);">
+                        <svg class="icon" style="width: 4rem; height: 4rem; margin-bottom: 1rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM12 8v4M12 16h.01"></path></svg>
+                        <p>All clear! No active compliance or fatigue alerts.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            allAlerts.forEach((alert, index) => {
+                const chip = document.createElement('div');
+                chip.className = `alert-chip ${alert.type === 'compliance' ? 'compliance' : ''}`;
+                chip.id = `alert-${index}`;
+                chip.innerHTML = `
+                    <span>${alert.message}</span>
+                    <div class="alert-actions">
+                        <button aria-label="Acknowledge alert" onclick="showToast('Alert Acknowledged', 'info')">
+                            <svg class="icon" style="width:1rem;height:1rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                        </button>
+                        <button aria-label="Dismiss alert" onclick="dismissAlert('${chip.id}')">
+                            <svg class="icon" style="width:1rem;height:1rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </div>
+                `;
+                alertList.appendChild(chip);
+            });
+        }
+
+        /**
+         * Removes an alert chip from the panel.
+         * @param {string} id - The ID of the alert chip element.
+         */
+        function dismissAlert(id) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.style.transform = 'translateX(110%)';
+                el.style.opacity = '0';
+                setTimeout(() => el.remove(), 300);
+            }
+            showToast('Alert dismissed.', 'info');
+        }
+
+        /**
+         * Displays a temporary toast notification.
+         * @param {string} message - The message to display.
+         * @param {string} type - 'success', 'error', or 'info'.
+         */
+        function showToast(message, type) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            
+            // Apply simple color coding
+            if (type === 'success') toast.style.borderLeft = '5px solid var(--color-success)';
+            if (type === 'error') toast.style.borderLeft = '5px solid var(--color-error)';
+            if (type === 'info') toast.style.borderLeft = '5px solid var(--color-accent)';
+
+            container.appendChild(toast);
+            
+            // Show animation
+            setTimeout(() => toast.classList.add('show'), 10);
+
+            // Hide animation and remove
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // --- WHAT-IF INPUT HANDLERS & PERSISTENCE ---
+
+        /**
+         * Binds events to the What-If controls.
+         */
+        function initWhatIfControls() {
+            const demandSlider = document.getElementById('demand-change');
+            const absencesSlider = document.getElementById('absences');
+            const demandVal = document.getElementById('demand-change-val');
+            const absencesVal = document.getElementById('absences-val');
+            const runBtn = document.getElementById('run-scenario-btn');
+
+            const updateSliderLabels = () => {
+                demandVal.textContent = (demandSlider.value > 0 ? '+' : '') + demandSlider.value + '%';
+                absencesVal.textContent = absencesSlider.value;
+            };
+
+            demandSlider.addEventListener('input', updateSliderLabels);
+            absencesSlider.addEventListener('input', updateSliderLabels);
+            runBtn.addEventListener('click', runScenario);
+            document.getElementById('export-scenario-btn').addEventListener('click', exportScenarioJSON);
+            
+            // Load persistent inputs
+            loadScenarioInputs();
+        }
+
+        /**
+         * Saves the last scenario inputs to localStorage.
+         * @param {Object} inputs - The current values of the What-If controls.
+         */
+        function saveScenarioInputs(inputs) {
+            localStorage.setItem('lastScenario', JSON.stringify(inputs));
+        }
+
+        /**
+         * Loads the last scenario inputs from localStorage.
+         */
+        function loadScenarioInputs() {
+            const savedInputs = localStorage.getItem('lastScenario');
+            if (savedInputs) {
+                const inputs = JSON.parse(savedInputs);
+                document.getElementById('demand-change').value = inputs.demandChange;
+                document.getElementById('absences').value = inputs.absences;
+                document.getElementById('shift-option').value = inputs.shiftOption;
+
+                // Update labels
+                document.getElementById('demand-change-val').textContent = (inputs.demandChange > 0 ? '+' : '') + inputs.demandChange + '%';
+                document.getElementById('absences-val').textContent = inputs.absences;
+                
+                // Run the scenario to initialize with the saved state
+                runScenario();
+                showToast('Last scenario loaded and applied.', 'info');
+            }
+        }
+
+        /**
+         * Exports the current scenario data as a JSON file download.
+         */
+        function exportScenarioJSON() {
+            const exportData = {
+                timestamp: new Date().toISOString(),
+                scenarioInputs: {
+                    demandChange: parseInt(document.getElementById('demand-change').value),
+                    absences: parseInt(document.getElementById('absences').value),
+                    shiftOption: document.getElementById('shift-option').value
+                },
+                baselineKPIs: baselineKPIs,
+                scenarioKPIs: scenarioKPIs,
+                currentWorkerSnapshot: currentWorkers.map(w => ({
+                    id: w.id,
+                    name: w.name,
+                    fatigueScore: w.fatigueScore,
+                    recentHours: w.recentHours,
+                    complianceFlags: w.complianceFlags
+                }))
+            };
+
+            const jsonString = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `workforce_scenario_${Date.now()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('Scenario data exported as JSON.', 'success');
+        }
+
+        // --- INITIALIZATION ---
+
+        window.onload = function() {
+            // 1. Theme Initialization
+            initTheme();
+
+            // 2. Scroll Interactions
+            initScrollShadow();
+            initScrollReveal();
+
+            // 3. Data Initialization
+            // Compute baseline KPIs from the original, clean dataset
+            baselineKPIs = computeKPIs(rawData.workers);
+            scenarioKPIs = JSON.parse(JSON.stringify(baselineKPIs)); // Start scenario = baseline
+            
+            // 4. UI Initialization
+            updateKPIs(baselineKPIs);
+            updateScheduleTable(rawData.workers);
+            updateAlertsPanel(rawData.workers);
+
+            // 5. Chart Initialization (pass initial data)
+            initTradeOffRadarChart(baselineKPIs, scenarioKPIs, 1, 1);
+            initSkillsCoverageChart();
+
+            // 6. What-If Controls Setup
+            initWhatIfControls();
+
+            // 7. Modal Listeners
+            document.getElementById('close-modal-btn').addEventListener('click', closeModal);
+            document.getElementById('modal-backdrop').addEventListener('click', (e) => {
+                if (e.target.id === 'modal-backdrop') closeModal();
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && document.getElementById('modal-backdrop').classList.contains('active')) {
+                    closeModal();
+                }
+            });
+        };
+    </script>
+</body>
+</html>
